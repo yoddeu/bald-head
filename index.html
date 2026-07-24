@@ -2,57 +2,51 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>별똥별 피하기</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>던전 탈출 퍼즐</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="game-shell">
-      <section class="hero-card" aria-labelledby="game-title">
-        <p class="eyebrow">Mini Browser Game</p>
-        <h1 id="game-title">별똥별 피하기</h1>
-        <p class="intro">
-          좌우로 움직여 떨어지는 별똥별을 피하세요. 오래 버틸수록 점수가 빠르게 올라갑니다.
-        </p>
-
-        <div class="hud" aria-label="게임 상태">
+    <main class="phone-stage" aria-labelledby="game-title">
+      <section class="game-panel">
+        <header class="top-bar">
           <div>
-            <span>점수</span>
-            <strong id="score">0</strong>
+            <p class="eyebrow">High Top View Prototype</p>
+            <h1 id="game-title">던전 탈출 퍼즐</h1>
+          </div>
+          <button id="reset-button" type="button">재시작</button>
+        </header>
+
+        <div class="status-row" aria-label="게임 상태">
+          <span id="goal-status">돌을 스위치 위로 밀어 출구를 여세요.</span>
+          <strong id="step-counter">0 걸음</strong>
+        </div>
+
+        <div class="canvas-wrap">
+          <canvas id="game" width="390" height="680" aria-label="던전 탈출 퍼즐 게임 화면"></canvas>
+          <div id="message" class="message hidden" role="status" aria-live="polite">
+            <h2>탈출 성공!</h2>
+            <p>출구에 도착했습니다. 다음 던전을 설계해 보세요.</p>
+          </div>
+          <div id="joystick" class="joystick" aria-label="가상 조이스틱">
+            <div id="joystick-knob" class="joystick-knob"></div>
+          </div>
+        </div>
+
+        <section class="how-to" aria-label="조작과 목표">
+          <div>
+            <b>목표</b>
+            <span>맨 위쪽 출구로 이동</span>
           </div>
           <div>
-            <span>최고 점수</span>
-            <strong id="best-score">0</strong>
+            <b>퍼즐</b>
+            <span>돌을 스위치 위로 밀기</span>
           </div>
           <div>
-            <span>속도</span>
-            <strong id="level">1</strong>
+            <b>조작</b>
+            <span>조이스틱 또는 방향키/WASD</span>
           </div>
-        </div>
-      </section>
-
-      <section class="game-card">
-        <canvas id="game" width="420" height="620" aria-label="별똥별 피하기 게임 화면"></canvas>
-        <div id="overlay" class="overlay">
-          <h2>준비됐나요?</h2>
-          <p>시작 버튼을 누른 뒤 방향키 또는 A/D 키로 움직입니다.</p>
-          <button id="start-button" type="button">게임 시작</button>
-        </div>
-      </section>
-
-      <section class="controls" aria-label="조작법">
-        <div>
-          <kbd>←</kbd><kbd>→</kbd>
-          <span>이동</span>
-        </div>
-        <div>
-          <kbd>A</kbd><kbd>D</kbd>
-          <span>이동</span>
-        </div>
-        <div>
-          <kbd>Space</kbd>
-          <span>시작 / 재시작</span>
-        </div>
+        </section>
       </section>
     </main>
 
