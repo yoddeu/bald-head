@@ -1,4 +1,8 @@
-import Phaser from 'https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.esm.js';
+const { Phaser } = window;
+
+if (!Phaser) {
+  throw new Error('Phaser failed to load. Check the CDN script in index.html or install Phaser locally.');
+}
 
 const GAME_WIDTH = 390;
 const GAME_HEIGHT = 680;

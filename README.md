@@ -11,7 +11,7 @@ Phaser 3 기반의 모바일 세로형 high top view 던전 퍼즐 프로토타�
 
 ## 실행 방식
 
-현재 `src/main.js`는 Phaser 3를 CDN ES module로 불러옵니다. 브라우저에서 정적 파일 서버로 `index.html`을 열면 실행할 수 있습니다.
+`index.html`에서 Phaser 3 CDN 스크립트를 먼저 로드하고, `src/main.js`는 `window.Phaser` 전역 객체를 사용합니다. 브라우저에서 정적 파일 서버로 `index.html`을 열면 실행할 수 있습니다.
 
 ```bash
 python3 -m http.server 4173
