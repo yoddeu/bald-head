@@ -6,75 +6,73 @@ if (!Phaser) {
 
 const GAME_WIDTH = 390;
 const GAME_HEIGHT = 680;
-const TILE_SIZE = 30;
-const MAP_OFFSET_Y = 104;
-const MOVE_COOLDOWN = 145;
-
-const DUNGEON_MAP = [
-  '#############',
-  '#.....E.....#',
-  '#.###...###.#',
-  '#...#...#...#',
-  '#...#...#...#',
-  '#...........#',
-  '#..##...##..#',
-  '#...........#',
-  '#.....S.....#',
-  '#...........#',
-  '#..###.###..#',
-  '#...........#',
-  '#....B......#',
-  '#...........#',
-  '#.....P.....#',
-  '#############',
-];
+const PLAYER_SPEED = 175;
+const PUSH_STRENGTH = 88;
 
 class DungeonEscapeScene extends Phaser.Scene {
   constructor() {
     super('DungeonEscapeScene');
-    this.player = { col: 6, row: 14 };
-    this.boulder = { col: 5, row: 12 };
-    this.switch = { col: 6, row: 8 };
-    this.exit = { col: 6, row: 1 };
-    this.steps = 0;
-    this.won = false;
-    this.nextMoveAt = 0;
     this.joystickVector = new Phaser.Math.Vector2(0, 0);
+    this.keyboardVector = new Phaser.Math.Vector2(0, 0);
+    this.steps = 0;
+    this.elapsedDistance = 0;
+    this.won = false;
+  }
+
+  preload() {
+    this.load.setPath('');
   }
 
   create() {
-    this.cameras.main.setBackgroundColor('#07111f');
+    this.cameras.main.setBackgroundColor('#08111f');
+    this.physics.world.setBounds(0, 96, GAME_WIDTH, GAME_HEIGHT - 96);
+
+    this.createBackground();
     this.createUi();
-    this.createDungeonLayer();
+    this.createDungeonSpace();
     this.createPuzzleObjects();
     this.createControls();
     this.resetPuzzle();
   }
 
+  createBackground() {
+    this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x08111f).setOrigin(0);
+    this.add.rectangle(0, 0, GAME_WIDTH, 96, 0x0f172a).setOrigin(0);
+
+    const floor = this.add.graphics();
+    floor.fillStyle(0x101827, 1);
+    floor.fillRoundedRect(14, 112, GAME_WIDTH - 28, GAME_HEIGHT - 132, 28);
+    floor.lineStyle(2, 0x1f2a44, 1);
+    floor.strokeRoundedRect(14, 112, GAME_WIDTH - 28, GAME_HEIGHT - 132, 28);
+
+    for (let y = 144; y < GAME_HEIGHT - 36; y += 42) {
+      floor.lineStyle(1, 0xffffff, 0.025);
+      floor.lineBetween(32, y, GAME_WIDTH - 32, y);
+    }
+  }
+
   createUi() {
-    this.add.rectangle(0, 0, GAME_WIDTH, MAP_OFFSET_Y, 0x0f172a).setOrigin(0);
-    this.add.text(18, 22, 'High Top View Dungeon', {
+    this.add.text(18, 22, 'Free Move Vector Dungeon', {
       fontFamily: 'system-ui',
-      fontSize: '19px',
-      fontStyle: '700',
+      fontSize: '18px',
+      fontStyle: '800',
       color: '#d9f99d',
     });
-    this.statusText = this.add.text(18, 53, '', {
+    this.statusText = this.add.text(18, 52, '', {
       fontFamily: 'system-ui',
       fontSize: '13px',
       color: '#cbd5e1',
     });
-    this.stepText = this.add.text(GAME_WIDTH - 18, 28, '', {
+    this.stepText = this.add.text(GAME_WIDTH - 18, 26, '', {
       fontFamily: 'system-ui',
       fontSize: '15px',
-      fontStyle: '700',
+      fontStyle: '800',
       color: '#fef08a',
     }).setOrigin(1, 0);
-
-    this.resetButton = this.add.text(GAME_WIDTH - 18, 57, '재시작', {
+    this.resetButton = this.add.text(GAME_WIDTH - 18, 56, '재시작', {
       fontFamily: 'system-ui',
       fontSize: '13px',
-      fontStyle: '700',
+      fontStyle: '800',
       color: '#07111f',
       backgroundColor: '#bef264',
       padding: { x: 10, y: 5 },
@@ -82,48 +80,78 @@ class DungeonEscapeScene extends Phaser.Scene {
     this.resetButton.on('pointerdown', () => this.resetPuzzle());
   }
 
-  createDungeonLayer() {
-    this.floorLayer = this.add.graphics();
-    this.wallLayer = this.add.graphics();
-    this.gridLayer = this.add.graphics();
+  createDungeonSpace() {
+    this.wallGroup = this.physics.add.staticGroup();
+    this.decorLayer = this.add.graphics();
 
-    for (let row = 0; row < DUNGEON_MAP.length; row += 1) {
-      for (let col = 0; col < DUNGEON_MAP[row].length; col += 1) {
-        this.drawTile(col, row, DUNGEON_MAP[row][col]);
-      }
+    const walls = [
+      { x: 195, y: 124, width: 332, height: 18, radius: 9 },
+      { x: 195, y: 642, width: 332, height: 18, radius: 9 },
+      { x: 30, y: 383, width: 18, height: 500, radius: 9 },
+      { x: 360, y: 383, width: 18, height: 500, radius: 9 },
+      { x: 111, y: 236, width: 126, height: 20, radius: 10 },
+      { x: 292, y: 236, width: 90, height: 20, radius: 10 },
+      { x: 83, y: 358, width: 96, height: 20, radius: 10 },
+      { x: 266, y: 360, width: 128, height: 20, radius: 10 },
+      { x: 134, y: 476, width: 20, height: 124, radius: 10 },
+      { x: 256, y: 502, width: 20, height: 120, radius: 10 },
+    ];
+
+    for (const wall of walls) {
+      this.drawWall(wall);
+      const body = this.add.zone(wall.x, wall.y, wall.width, wall.height);
+      this.wallGroup.add(body);
+      body.body.setSize(wall.width, wall.height);
     }
-
-    this.drawGrid();
   }
 
   createPuzzleObjects() {
-    this.switchPad = this.add.rectangle(0, 0, TILE_SIZE - 12, TILE_SIZE - 12, 0x64748b, 1).setOrigin(0.5);
-    this.exitDoor = this.add.rectangle(0, 0, TILE_SIZE - 8, TILE_SIZE - 4, 0x7f1d1d, 1).setOrigin(0.5);
-    this.exitLabel = this.add.text(0, 0, 'EXIT', {
-      fontFamily: 'system-ui',
-      fontSize: '11px',
-      fontStyle: '700',
-      color: '#f8fafc',
-    }).setOrigin(0.5);
+    this.exitZone = this.add.zone(GAME_WIDTH / 2, 132, 76, 24);
+    this.physics.add.existing(this.exitZone, true);
+    this.exitGlow = this.add.graphics();
 
-    this.boulderSprite = this.add.circle(0, 0, 12, 0x8b7355, 1);
-    this.boulderShine = this.add.circle(0, 0, 3, 0xffffff, 0.18);
-    this.playerBody = this.add.circle(0, 0, 11, 0x60a5fa, 1);
-    this.playerHead = this.add.circle(0, 0, 5, 0xbfdbfe, 1);
+    this.switchZone = this.add.circle(260, 426, 24, 0x64748b, 1);
+    this.switchRing = this.add.circle(260, 426, 31).setStrokeStyle(3, 0x94a3b8, 0.38);
+    this.physics.add.existing(this.switchZone, true);
+    this.switchZone.body.setCircle(24);
+
+    this.boulder = this.add.circle(132, 560, 20, 0x8b7355, 1);
+    this.boulderShine = this.add.circle(124, 552, 5, 0xffffff, 0.18);
+    this.physics.add.existing(this.boulder);
+    this.boulder.body.setCircle(20);
+    this.boulder.body.setCollideWorldBounds(true);
+    this.boulder.body.setBounce(0.15);
+    this.boulder.body.setDrag(420, 420);
+    this.boulder.body.setMaxVelocity(130, 130);
+
+    this.player = this.add.container(195, 594);
+    this.playerBody = this.add.circle(0, 0, 16, 0x60a5fa, 1);
+    this.playerHead = this.add.circle(0, -8, 7, 0xbfdbfe, 1);
+    this.playerDirection = this.add.triangle(0, -22, 0, -8, -7, 6, 7, 6, 0xdbeafe, 0.85);
+    this.player.add([this.playerBody, this.playerHead, this.playerDirection]);
+    this.physics.add.existing(this.player);
+    this.player.body.setCircle(16, -16, -16);
+    this.player.body.setCollideWorldBounds(true);
+    this.player.body.setDrag(900, 900);
+
+    this.physics.add.collider(this.player, this.wallGroup);
+    this.physics.add.collider(this.boulder, this.wallGroup);
+    this.physics.add.collider(this.player, this.boulder, () => this.pushBoulder());
+    this.physics.add.overlap(this.player, this.exitZone, () => this.tryCompleteLevel());
   }
 
   createControls() {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys('W,A,S,D');
 
-    this.joystickBase = this.add.circle(70, GAME_HEIGHT - 76, 58, 0x0f172a, 0.58)
+    this.joystickBase = this.add.circle(72, GAME_HEIGHT - 78, 58, 0x0f172a, 0.6)
       .setStrokeStyle(2, 0xffffff, 0.2)
       .setScrollFactor(0);
-    this.joystickKnob = this.add.circle(70, GAME_HEIGHT - 76, 24, 0x67e8f9, 1).setScrollFactor(0);
-    this.joystickLabel = this.add.text(70, GAME_HEIGHT - 12, 'JOYSTICK', {
+    this.joystickKnob = this.add.circle(72, GAME_HEIGHT - 78, 24, 0x67e8f9, 1).setScrollFactor(0);
+    this.add.text(72, GAME_HEIGHT - 14, 'JOYSTICK', {
       fontFamily: 'system-ui',
       fontSize: '10px',
-      fontStyle: '700',
+      fontStyle: '800',
       color: '#94a3b8',
     }).setOrigin(0.5).setScrollFactor(0);
 
@@ -136,138 +164,102 @@ class DungeonEscapeScene extends Phaser.Scene {
   }
 
   resetPuzzle() {
-    this.player = { col: 6, row: 14 };
-    this.boulder = { col: 5, row: 12 };
     this.steps = 0;
+    this.elapsedDistance = 0;
     this.won = false;
-    this.nextMoveAt = 0;
+    this.player.setPosition(195, 594);
+    this.player.body.setVelocity(0, 0);
+    this.boulder.setPosition(132, 560);
+    this.boulder.body.setVelocity(0, 0);
+    this.boulderShine.setPosition(124, 552);
     this.winPanel?.destroy();
     this.winPanel = null;
-    this.syncSprites(true);
+    this.refreshExitAndSwitch();
     this.refreshStatus();
   }
 
-  drawTile(col, row, symbol) {
-    const x = col * TILE_SIZE;
-    const y = MAP_OFFSET_Y + row * TILE_SIZE;
-    const isWall = symbol === '#';
+  update(_, deltaMs) {
+    if (this.won) return;
 
-    this.floorLayer.fillStyle((col + row) % 2 ? 0x172033 : 0x141c2d, 1);
-    this.floorLayer.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-
-    if (!isWall) return;
-
-    this.wallLayer.fillStyle(0x263247, 1);
-    this.wallLayer.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-    this.wallLayer.fillStyle(0xffffff, 0.08);
-    this.wallLayer.fillRect(x + 3, y + 3, TILE_SIZE - 6, 4);
-  }
-
-  drawGrid() {
-    this.gridLayer.lineStyle(1, 0xffffff, 0.035);
-    for (let x = 0; x <= GAME_WIDTH; x += TILE_SIZE) {
-      this.gridLayer.lineBetween(x, MAP_OFFSET_Y, x, MAP_OFFSET_Y + DUNGEON_MAP.length * TILE_SIZE);
-    }
-    for (let y = MAP_OFFSET_Y; y <= MAP_OFFSET_Y + DUNGEON_MAP.length * TILE_SIZE; y += TILE_SIZE) {
-      this.gridLayer.lineBetween(0, y, GAME_WIDTH, y);
-    }
-  }
-
-  refreshStatus() {
-    const switchPressed = this.isSwitchPressed();
-    this.statusText.setText(switchPressed ? '출구가 열렸습니다. 위쪽으로 탈출하세요!' : '돌을 스위치 위로 밀어 출구를 여세요.');
-    this.stepText.setText(`${this.steps} 걸음`);
-    this.switchPad.setFillStyle(switchPressed ? 0xbef264 : 0x64748b);
-    this.exitDoor.setFillStyle(switchPressed ? 0x22c55e : 0x7f1d1d);
-  }
-
-  update(time) {
-    if (time < this.nextMoveAt || this.won) return;
-
+    const delta = deltaMs / 1000;
     const direction = this.getMoveDirection();
-    if (!direction) return;
+    this.player.body.setVelocity(direction.x * PLAYER_SPEED, direction.y * PLAYER_SPEED);
 
-    this.tryMove(direction.x, direction.y);
-    this.nextMoveAt = time + MOVE_COOLDOWN;
+    if (direction.lengthSq() > 0) {
+      this.playerDirection.rotation = direction.angle() + Math.PI / 2;
+      this.elapsedDistance += PLAYER_SPEED * delta;
+      this.steps = Math.floor(this.elapsedDistance / 34);
+    }
+
+    this.boulderShine.setPosition(this.boulder.x - 8, this.boulder.y - 8);
+    this.refreshExitAndSwitch();
+    this.refreshStatus();
   }
 
   getMoveDirection() {
     const keyboardX = Number(this.cursors.right.isDown || this.wasd.D.isDown) - Number(this.cursors.left.isDown || this.wasd.A.isDown);
     const keyboardY = Number(this.cursors.down.isDown || this.wasd.S.isDown) - Number(this.cursors.up.isDown || this.wasd.W.isDown);
-    const x = keyboardX || this.joystickVector.x;
-    const y = keyboardY || this.joystickVector.y;
+    this.keyboardVector.set(keyboardX, keyboardY);
 
-    if (Math.abs(x) < 0.25 && Math.abs(y) < 0.25) return null;
-    return Math.abs(x) >= Math.abs(y)
-      ? { x: Math.sign(x), y: 0 }
-      : { x: 0, y: Math.sign(y) };
+    const activeVector = this.keyboardVector.lengthSq() > 0 ? this.keyboardVector : this.joystickVector;
+    if (activeVector.lengthSq() === 0) return new Phaser.Math.Vector2(0, 0);
+    return activeVector.clone().normalize();
   }
 
-  tryMove(dx, dy) {
-    const nextCol = this.player.col + dx;
-    const nextRow = this.player.row + dy;
-    const pushingBoulder = nextCol === this.boulder.col && nextRow === this.boulder.row;
-
-    if (pushingBoulder) {
-      const boulderCol = this.boulder.col + dx;
-      const boulderRow = this.boulder.row + dy;
-      if (!this.canEnter(boulderCol, boulderRow)) return;
-      this.boulder = { col: boulderCol, row: boulderRow };
-    } else if (!this.canEnter(nextCol, nextRow)) {
-      return;
-    }
-
-    this.player = { col: nextCol, row: nextRow };
-    this.steps += 1;
-    this.syncSprites();
-
-    if (this.player.col === this.exit.col && this.player.row === this.exit.row && this.isExitOpen()) {
-      this.completeLevel();
-    }
-
-    this.refreshStatus();
-  }
-
-  canEnter(col, row) {
-    if (DUNGEON_MAP[row]?.[col] === '#') return false;
-    if (col === this.exit.col && row === this.exit.row) return this.isExitOpen();
-    return true;
+  pushBoulder() {
+    const dx = this.boulder.x - this.player.x;
+    const dy = this.boulder.y - this.player.y;
+    const pushVector = new Phaser.Math.Vector2(dx, dy);
+    if (pushVector.lengthSq() === 0) return;
+    pushVector.normalize().scale(PUSH_STRENGTH);
+    this.boulder.body.setVelocity(pushVector.x, pushVector.y);
   }
 
   isSwitchPressed() {
-    return this.boulder.col === this.switch.col && this.boulder.row === this.switch.row;
+    return Phaser.Math.Distance.Between(this.boulder.x, this.boulder.y, this.switchZone.x, this.switchZone.y) < 28;
   }
 
-  isExitOpen() {
-    return this.isSwitchPressed();
+  refreshExitAndSwitch() {
+    const open = this.isSwitchPressed();
+    this.switchZone.setFillStyle(open ? 0xbef264 : 0x64748b, 1);
+    this.switchRing.setStrokeStyle(3, open ? 0xbef264 : 0x94a3b8, open ? 0.76 : 0.38);
+
+    this.exitGlow.clear();
+    this.exitGlow.fillStyle(open ? 0x22c55e : 0x7f1d1d, 1);
+    this.exitGlow.fillRoundedRect(GAME_WIDTH / 2 - 46, 120, 92, 24, 12);
+    this.exitGlow.fillStyle(0xffffff, open ? 0.18 : 0.08);
+    this.exitGlow.fillRoundedRect(GAME_WIDTH / 2 - 32, 126, 64, 5, 4);
   }
 
-  syncSprites(skipTween = false) {
-    const positions = [
-      [this.switchPad, this.switch],
-      [this.exitDoor, this.exit],
-      [this.exitLabel, this.exit],
-      [this.boulderSprite, this.boulder],
-      [this.boulderShine, { col: this.boulder.col - 0.12, row: this.boulder.row - 0.16 }],
-      [this.playerBody, this.player],
-      [this.playerHead, { col: this.player.col, row: this.player.row - 0.16 }],
-    ];
-
-    for (const [gameObject, gridPosition] of positions) {
-      const target = this.toWorld(gridPosition.col, gridPosition.row);
-      if (skipTween) {
-        gameObject.setPosition(target.x, target.y);
-      } else {
-        this.tweens.add({ targets: gameObject, x: target.x, y: target.y, duration: 110, ease: 'Sine.easeOut' });
-      }
-    }
+  refreshStatus() {
+    this.statusText.setText(this.isSwitchPressed() ? '출구가 열렸습니다. 위쪽으로 이동하세요!' : '자유롭게 이동하며 돌을 스위치로 밀어보세요.');
+    this.stepText.setText(`${this.steps} 이동`);
   }
 
-  toWorld(col, row) {
-    return {
-      x: col * TILE_SIZE + TILE_SIZE / 2,
-      y: MAP_OFFSET_Y + row * TILE_SIZE + TILE_SIZE / 2,
-    };
+  tryCompleteLevel() {
+    if (!this.isSwitchPressed() || this.won) return;
+    this.won = true;
+    this.player.body.setVelocity(0, 0);
+    this.boulder.body.setVelocity(0, 0);
+    this.winPanel = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2, [
+      this.add.rectangle(0, 0, 310, 168, 0x020617, 0.88).setStrokeStyle(2, 0xbef264, 0.78),
+      this.add.text(0, -42, '탈출 성공!', {
+        fontFamily: 'system-ui',
+        fontSize: '30px',
+        fontStyle: '900',
+        color: '#bef264',
+      }).setOrigin(0.5),
+      this.add.text(0, 4, `${this.steps} 이동으로 출구에 도착했습니다.`, {
+        fontFamily: 'system-ui',
+        fontSize: '15px',
+        color: '#dbeafe',
+      }).setOrigin(0.5),
+      this.add.text(0, 42, '재시작 버튼으로 다시 도전하세요.', {
+        fontFamily: 'system-ui',
+        fontSize: '13px',
+        color: '#94a3b8',
+      }).setOrigin(0.5),
+    ]);
   }
 
   updateJoystick(pointer) {
@@ -288,27 +280,11 @@ class DungeonEscapeScene extends Phaser.Scene {
     this.joystickVector.set(0, 0);
   }
 
-  completeLevel() {
-    this.won = true;
-    this.winPanel = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2, [
-      this.add.rectangle(0, 0, 310, 168, 0x020617, 0.86).setStrokeStyle(2, 0xbef264, 0.7),
-      this.add.text(0, -42, '탈출 성공!', {
-        fontFamily: 'system-ui',
-        fontSize: '30px',
-        fontStyle: '900',
-        color: '#bef264',
-      }).setOrigin(0.5),
-      this.add.text(0, 4, `${this.steps} 걸음으로 출구에 도착했습니다.`, {
-        fontFamily: 'system-ui',
-        fontSize: '15px',
-        color: '#dbeafe',
-      }).setOrigin(0.5),
-      this.add.text(0, 42, '재시작 버튼으로 다시 도전하세요.', {
-        fontFamily: 'system-ui',
-        fontSize: '13px',
-        color: '#94a3b8',
-      }).setOrigin(0.5),
-    ]);
+  drawWall({ x, y, width, height, radius }) {
+    this.decorLayer.fillStyle(0x263247, 1);
+    this.decorLayer.fillRoundedRect(x - width / 2, y - height / 2, width, height, radius);
+    this.decorLayer.fillStyle(0xffffff, 0.08);
+    this.decorLayer.fillRoundedRect(x - width / 2 + 6, y - height / 2 + 4, width - 12, 4, 3);
   }
 }
 
@@ -317,7 +293,13 @@ const config = {
   parent: 'game-container',
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  backgroundColor: '#07111f',
+  backgroundColor: '#08111f',
+  physics: {
+    default: 'arcade',
+    arcade: {
+      debug: false,
+    },
+  },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
