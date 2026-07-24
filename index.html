@@ -3,53 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>던전 탈출 퍼즐</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>던전 탈출 퍼즐 - Phaser</title>
+    <link rel="stylesheet" href="src/styles.css" />
   </head>
   <body>
-    <main class="phone-stage" aria-labelledby="game-title">
-      <section class="game-panel">
-        <header class="top-bar">
-          <div>
-            <p class="eyebrow">High Top View Prototype</p>
-            <h1 id="game-title">던전 탈출 퍼즐</h1>
-          </div>
-          <button id="reset-button" type="button">재시작</button>
-        </header>
-
-        <div class="status-row" aria-label="게임 상태">
-          <span id="goal-status">돌을 스위치 위로 밀어 출구를 여세요.</span>
-          <strong id="step-counter">0 걸음</strong>
-        </div>
-
-        <div class="canvas-wrap">
-          <canvas id="game" width="390" height="680" aria-label="던전 탈출 퍼즐 게임 화면"></canvas>
-          <div id="message" class="message hidden" role="status" aria-live="polite">
-            <h2>탈출 성공!</h2>
-            <p>출구에 도착했습니다. 다음 던전을 설계해 보세요.</p>
-          </div>
-          <div id="joystick" class="joystick" aria-label="가상 조이스틱">
-            <div id="joystick-knob" class="joystick-knob"></div>
-          </div>
-        </div>
-
-        <section class="how-to" aria-label="조작과 목표">
-          <div>
-            <b>목표</b>
-            <span>맨 위쪽 출구로 이동</span>
-          </div>
-          <div>
-            <b>퍼즐</b>
-            <span>돌을 스위치 위로 밀기</span>
-          </div>
-          <div>
-            <b>조작</b>
-            <span>조이스틱 또는 방향키/WASD</span>
-          </div>
-        </section>
+    <main class="app-shell" aria-labelledby="game-title">
+      <header class="app-header">
+        <p>Phaser 3 Mobile Prototype</p>
+        <h1 id="game-title">던전 탈출 퍼즐</h1>
+      </header>
+      <div id="game-container" aria-label="Phaser 던전 탈출 퍼즐 게임"></div>
+      <section class="tips" aria-label="게임 설명">
+        <span>🎮 가상 조이스틱 / 방향키 / WASD</span>
+        <span>🪨 돌을 스위치로 밀면 출구가 열립니다</span>
+        <span>🚪 화면 위쪽 출구로 탈출하세요</span>
       </section>
     </main>
-
-    <script src="game.js"></script>
+    <script type="module" src="src/main.js"></script>
   </body>
 </html>
