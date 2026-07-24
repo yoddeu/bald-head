@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>별똥별 피하기</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="hero-card" aria-labelledby="game-title">
+        <p class="eyebrow">Mini Browser Game</p>
+        <h1 id="game-title">별똥별 피하기</h1>
+        <p class="intro">
+          좌우로 움직여 떨어지는 별똥별을 피하세요. 오래 버틸수록 점수가 빠르게 올라갑니다.
+        </p>
+
+        <div class="hud" aria-label="게임 상태">
+          <div>
+            <span>점수</span>
+            <strong id="score">0</strong>
+          </div>
+          <div>
+            <span>최고 점수</span>
+            <strong id="best-score">0</strong>
+          </div>
+          <div>
+            <span>속도</span>
+            <strong id="level">1</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="game-card">
+        <canvas id="game" width="420" height="620" aria-label="별똥별 피하기 게임 화면"></canvas>
+        <div id="overlay" class="overlay">
+          <h2>준비됐나요?</h2>
+          <p>시작 버튼을 누른 뒤 방향키 또는 A/D 키로 움직입니다.</p>
+          <button id="start-button" type="button">게임 시작</button>
+        </div>
+      </section>
+
+      <section class="controls" aria-label="조작법">
+        <div>
+          <kbd>←</kbd><kbd>→</kbd>
+          <span>이동</span>
+        </div>
+        <div>
+          <kbd>A</kbd><kbd>D</kbd>
+          <span>이동</span>
+        </div>
+        <div>
+          <kbd>Space</kbd>
+          <span>시작 / 재시작</span>
+        </div>
+      </section>
+    </main>
+
+    <script src="game.js"></script>
+  </body>
+</html>
